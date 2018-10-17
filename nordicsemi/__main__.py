@@ -50,6 +50,7 @@ from nordicsemi.dfu.bl_dfu_sett import BLDFUSettings
 from nordicsemi.dfu.dfu import Dfu
 from nordicsemi.dfu.dfu_transport import DfuEvent, TRANSPORT_LOGGING_LEVEL
 from nordicsemi.dfu.dfu_transport_serial import DfuTransportSerial
+from nordicsemi.dfu.dfu_transport_whisper import DfuTransportWhisper
 from nordicsemi.dfu.package import Package
 from nordicsemi import version as nrfutil_version
 from nordicsemi.dfu.signing import Signing
@@ -856,6 +857,32 @@ def serial(package, port, connect_delay, flow_control, packet_receipt_notificati
     """Perform a Device Firmware Update on a device with a bootloader that supports UART serial DFU."""
 
     do_serial(package, port, connect_delay, flow_control, packet_receipt_notification, baud_rate, True)
+
+
+@dfu.command(short_help="Update the firmware on a device over a Whisper USB connection.")
+@click.option('-pkg', '--package',
+              help='Filename of the DFU package.',
+              type=click.Path(exists=True, resolve_path=True, file_okay=True, dir_okay=False),
+              required=True)
+@click.option('-dev', '--device',
+              help='nRF device to program. Can be "left", "right", or "both" (default)',
+              type=click.Choice(['left', 'right']), required=True)
+def whisper(package, device):
+    whisper_backend = DfuTransportWhisper(device)
+    whisper_backend.register_events_callback(DfuEvent.PROGRESS_EVENT, update_progress)
+    dfu = Dfu(zip_file_path = package, dfu_transport = whisper_backend, connect_delay = 0)
+
+    logger.info("Updating {} nRF with {}".format(device, package))
+
+    if logger.getEffectiveLevel() > logging.INFO:
+        with click.progressbar(length=dfu.dfu_get_total_size()) as bar:
+            global global_bar
+            global_bar = bar
+            dfu.dfu_send_images()
+    else:
+        dfu.dfu_send_images()
+
+    click.echo("Device programmed.")
 
 
 def enumerate_ports():
