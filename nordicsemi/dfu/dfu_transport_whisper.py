@@ -204,8 +204,11 @@ class DfuTransportWhisper(DfuTransport):
             raise NordicSemiException("Whisper USB device can't be opened"
             + ". Reason: {0}".format(e.message))
 
-        self.__set_prn()
-        self.__get_mtu()
+        try:
+            self.__set_prn()
+            self.__get_mtu()
+        except:
+            raise Exception("nRF device isn't responding. Make sure bootloader and MBR are flashed")
 
     def close(self):
         super(DfuTransportWhisper, self).close()
