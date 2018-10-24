@@ -309,6 +309,7 @@ class DfuTransportWhisper(DfuTransport):
         self.dfu_adapter.send_message([DfuTransportWhisper.OP_CODE['GetSerialMTU']])
         response = self.__get_response(DfuTransportWhisper.OP_CODE['GetSerialMTU'])
         self.mtu = struct.unpack('<H', bytearray(response))[0]
+        logger.info("MTU is {}".format(self.mtu))
 
     def __ping(self):
         self.ping_id = (self.ping_id + 1) % 256
@@ -416,6 +417,7 @@ class DfuTransportWhisper(DfuTransport):
                 current_pnr = 0
                 response    = self.__get_checksum_response()
                 validate_crc()
+            time.sleep(0.01)
         response = self.__calculate_checksum()
         validate_crc()
         return crc
