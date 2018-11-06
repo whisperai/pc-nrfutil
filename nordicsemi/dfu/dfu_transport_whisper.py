@@ -202,7 +202,7 @@ class DfuTransportWhisper(DfuTransport):
             self.dfu_adapter = DFUAdapter(self.usb_device, self.epnum)
         except Exception as e:
             raise NordicSemiException("Whisper USB device can't be opened"
-            + ". Reason: {0}".format(e.message))
+            + ". Reason: {0}".format(e))
 
         try:
             self.__set_prn()
@@ -302,14 +302,13 @@ class DfuTransportWhisper(DfuTransport):
     def __set_prn(self):
         logger.debug("Whisper: Set Packet Receipt Notification {}".format(self.prn))
         self.dfu_adapter.send_message([DfuTransportWhisper.OP_CODE['SetPRN']]
-            + map(ord, struct.pack('<H', self.prn)))
+            + list(struct.pack('<H', self.prn)))
         self.__get_response(DfuTransportWhisper.OP_CODE['SetPRN'])
 
     def __get_mtu(self):
         self.dfu_adapter.send_message([DfuTransportWhisper.OP_CODE['GetSerialMTU']])
         response = self.__get_response(DfuTransportWhisper.OP_CODE['GetSerialMTU'])
         self.mtu = struct.unpack('<H', bytearray(response))[0]
-        logger.info("MTU is {}".format(self.mtu))
 
     def __ping(self):
         self.ping_id = (self.ping_id + 1) % 256
@@ -347,7 +346,7 @@ class DfuTransportWhisper(DfuTransport):
 
     def __create_object(self, object_type, size):
         self.dfu_adapter.send_message([DfuTransportWhisper.OP_CODE['CreateObject'], object_type]\
-                                            + map(ord, struct.pack('<L', size)))
+                                            + list(struct.pack('<L', size)))
         self.__get_response(DfuTransportWhisper.OP_CODE['CreateObject'])
 
     def __calculate_checksum(self):
@@ -402,14 +401,14 @@ class DfuTransportWhisper(DfuTransport):
 
         current_pnr     = 0
 
-        for i in range(0, len(data), (self.mtu-1)/2 - 1):
+        for i in range(0, len(data), (self.mtu-1)//2 - 1):
             # append the write data opcode to the front
             # here the maximum data size is self.mtu/2,
             # due to the slip encoding which at maximum doubles the size
-            to_transmit = data[i:i + (self.mtu-1)/2 - 1 ]
+            to_transmit = data[i:i + (self.mtu-1)//2 - 1 ]
             to_transmit = struct.pack('B',DfuTransportWhisper.OP_CODE['WriteObject']) + to_transmit
 
-            self.dfu_adapter.send_message(map(ord, to_transmit))
+            self.dfu_adapter.send_message(to_transmit)
             crc     = binascii.crc32(to_transmit[1:], crc) & 0xFFFFFFFF
             offset += len(to_transmit) - 1
             current_pnr    += 1
