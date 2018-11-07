@@ -122,6 +122,10 @@ class DFUAdapter(object):
         self.timeout = timeout
 
         self.data = array.array('B')
+        try:
+            self.usb_device.read(self.epread, 1024)
+        except: pass
+
 
     def send_message(self, data):
         packet = Slip.encode(data)
@@ -204,8 +208,14 @@ class DfuTransportWhisper(DfuTransport):
             raise NordicSemiException("Whisper USB device can't be opened"
             + ". Reason: {0}".format(e))
 
+        # this fails on the first try occassionally - this is a bandaid
+        for i in range(3):
+            try:
+                self.__set_prn()
+                break
+            except: pass
+
         try:
-            self.__set_prn()
             self.__get_mtu()
         except:
             raise Exception("nRF device isn't responding. Make sure bootloader and MBR are flashed")
